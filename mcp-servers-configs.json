@@ -1,0 +1,49 @@
+{
+    "mcpServers": {
+        "default-server": {
+            "disabled": true,
+            "timeout": 60,
+            "command": "uv",
+            "args": [
+                "run",
+                "--with",
+                "mcp",
+                "mcp",
+                "run",
+                "D:/my_projects/mcp_server/server.py"
+            ],
+            "transportType": "stdio"
+        },
+        "youtube-subtitle-extractor": {
+            "autoApprove": [
+                "get_subtitlefor_video"
+            ],
+            "disabled": false,
+            "timeout": 300,
+            "command": "uv",
+            "args": [
+                "run",
+                "--with",
+                "mcp",
+                "mcp",
+                "run",
+                "D:/my_projects/Gen_AI_Projects/model_context_protocol/mcp_project_one/mcp_servers/youtube_server.py"
+            ],
+            "transportType": "stdio"
+        },
+        "Arxiv_researcher": {
+            "disabled": false,
+            "timeout": 60,
+            "command": "uv",
+            "args": [
+                "run",
+                "--with",
+                "mcp",
+                "mcp",
+                "run",
+                "D:/my_projects/Gen_AI_Projects/model_context_protocol/mcp_project_one/mcp_servers/arxiv_server.py"
+            ],
+            "transportType": "stdio"
+        }
+    }
+}

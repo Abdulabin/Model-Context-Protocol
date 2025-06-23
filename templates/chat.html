@@ -2,124 +2,75 @@
 {% block title %}Chat Bot{% endblock %}
 
 {% block extra_head %}
-<style>
-    #chat-box {
-        max-height: 500px;
-        overflow-y: auto;
-        background-color: #f0f2f5;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
-        margin-bottom: 25px;
-    }
-
-    .message {
-        margin-bottom: 15px;
-        display: flex;
-    }
-
-    .user-message {
-        justify-content: flex-start;
-    }
-
-    .assistant-message {
-        justify-content: flex-end;
-    }
-
-    .bubble {
-        padding: 12px 18px;
-        border-radius: 16px;
-        max-width: 80%;
-        font-size: 0.95rem;
-        line-height: 1.2;
-        white-space: normal !important;
-        word-break: break-word;
-        overflow-wrap: break-word;
-        hyphens: auto;
-        text-align: left;
-        display: inline-block;
-        box-sizing: border-box;
-        background-color: #e0e0e0;
-    }
-
-    .bubble.user {
-        background-color: #f4d799;
-        color: #333;
-    }
-
-    .bubble.assistant {
-        background-color: #ccf3a1;
-        color: #333;
-    }
-
-    form.chat-form {
-        display: flex;
-        gap: 10px;
-    }
-
-    form.chat-form input[type="text"] {
-        flex: 1;
-        padding: 12px;
-        font-size: 1rem;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-    }
-
-    form.chat-form input[type="submit"] {
-        padding: 12px 20px;
-        background-color: #1a73e8;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 1rem;
-        cursor: pointer;
-    }
-
-    form.chat-form input[type="submit"]:hover {
-        background-color: #0c59d1;
-    }
-
-    .bubble strong {
-        font-weight: bold;
-    }
-
-    .bubble p {
-        margin: 0.25rem 0;
-    }
-</style>
-
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const chatBox = document.getElementById('chat-box');
-        if (chatBox) {
-            chatBox.scrollTop = chatBox.scrollHeight;
+document.addEventListener('DOMContentLoaded', function () {
+    const chatBox = document.getElementById('chat-box');
+    if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+        // Uncomment below for smooth scrolling animation
+        // chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+    }
+});
+
+function handleSubmit(event) {
+    const submitter = event.submitter;
+    const input = document.getElementById('user_query');
+    const loadingIndicator = document.getElementById('loading-indicator');
+
+    if (submitter && submitter.value === "Ask") {
+        if (!input.value.trim()) {
+            alert("Please enter a message before asking.");
+            event.preventDefault();
+            return false;
         }
-    });
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'block';
+        }
+    }
+
+    return true;
+}
 </script>
 {% endblock %}
 
 {% block content %}
-<h2>🤖 MCP Powered Chat Bot</h2>
+<h3>🤖 MCP Powered Chat Bot</h3>
 
 <div id="chat-box">
     {% for entry in chat_history %}
         <div class="message user-message">
             <div class="bubble user">
                 <strong>User:</strong>
-                {{ entry.user | markdown }}
+                {{ entry.User | markdown }}
             </div>
         </div>
         <div class="message assistant-message">
             <div class="bubble assistant">
                 <strong>Assistant:</strong>
-                {{ entry.assistant | markdown }}
+                {{ entry.Assistant | markdown }}
             </div>
         </div>
     {% endfor %}
 </div>
 
-<form method="POST" class="chat-form">
-    <input type="text" name="user_query" placeholder="Type your message..." required>
-    <input type="submit" value="Ask">
+<div id="loading-indicator" style="display:none; margin-top: 1rem; font-style: italic; color: #777; text-align: center;">
+    <span class="spinner"></span> Assistant is typing...
+</div>
+
+<form method="POST" class="chat-form" onsubmit="return handleSubmit(event)" style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+    <input 
+        type="text" 
+        name="user_query" 
+        id="user_query" 
+        placeholder="Type your message..." 
+        autocomplete="off" 
+        autocapitalize="off" 
+        autocorrect="off" 
+        style="flex-grow: 1; padding: 0.8rem 1rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc;"
+    >
+    <div class="chat-form-buttons" style="display: flex; gap: 0.7rem;">
+        <input type="submit" name="ask" value="Ask" id="ask_button" style="background-color: #2980b9; color: white; border: none; padding: 0.75rem 1.2rem; border-radius: 6px; cursor: pointer;">
+        <input type="submit" name="clear_chat" value="🗑️ Clear Chat" id="clear_button" style="background-color: #e74c3c; color: white; border: none; padding: 0.75rem 1.2rem; border-radius: 6px; cursor: pointer;">
+    </div>
 </form>
 {% endblock %}

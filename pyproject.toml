@@ -7,6 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "aisuite[all]>=0.1.6",
     "arxiv==2.2.0",
+    "fastapi==0.115.4",
     "fastmcp==2.5.2",
     "flask==3.1.1",
     "google-ai-generativelanguage==0.6.15",
@@ -16,6 +17,7 @@ dependencies = [
     "huggingface-hub==0.32.3",
     "ipykernel==6.29.5",
     "ipython==8.36.0",
+    "jinja2==3.1.6",
     "markdown==3.8",
     "markupsafe==3.0.2",
     "mcp[cli]==1.9.2",

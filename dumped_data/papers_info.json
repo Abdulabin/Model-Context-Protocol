@@ -64,5 +64,46 @@
     "summary": "We present the first results of a volume-limited survey of main sequence (MS)\nmagnetic chemically peculiar (mCP) stars. The sample consists of all identified\nintermediate-mass MS stars (mCP and non-mCP) within a heliocentric distance of\n$100\\,{\\rm pc}$ as determined using Hipparcos parallaxes. The two populations\nare compared in order to determine the unique properties that allow a small\nfraction of MS stars with masses $\\gtrsim1.4\\,M_\\odot$ to host strong, large\nscale magnetic fields. A total of 52 confirmed mCP stars are identified using\npublished magnetic, spectroscopic, and photometric observations along with\narchived and newly obtained spectropolarimetric (Stokes $V$) observations. We\nderive the fundamental parameters (effective temperatures, luminosities,\nmasses, and evolutionary states) of the mCP and non-mCP populations using\nhomogeneous analyses. A detailed analysis of the mCP stars is performed using\nthe {\\sc llmodels} code, which allows observed spectral energy distributions to\nbe modeled while incorporating chemical peculiarities and magnetic fields. The\nsurface gravities and mean chemical abundances are derived by modelling\naveraged spectra using the {\\sc gssp} and {\\sc zeeman} spectral synthesis\ncodes. Masses and stellar ages are derived using modern, densely calculated\nevolutionary model grids. We confirm a number of previously reported\nevolutionary properties associated with mCP stars including a conspicuously\nhigh incidence of middle-aged MS stars with respect to the non-mCP subsample;\nthe incidence of mCP stars is found to sharply increase with mass from\n$0.3$~per~cent at $1.5\\,M_\\odot$ to $\\approx11$~per~cent at $3.8\\,M_\\odot$.\nFinally, we identify clear trends in the mean photospheric chemical abundances\nwith stellar age.",
     "pdf_url": "http://arxiv.org/pdf/1811.05633v1",
     "published": "2018-11-14"
+  },
+  "2309.13192v2": {
+    "title": "Towards Green AI in Fine-tuning Large Language Models via Adaptive Backpropagation",
+    "authors": [
+      "Kai Huang",
+      "Hanyun Yin",
+      "Heng Huang",
+      "Wei Gao"
+    ],
+    "summary": "Fine-tuning is the most effective way of adapting pre-trained large language\nmodels (LLMs) to downstream applications. With the fast growth of LLM-enabled\nAI applications and democratization of open-souced LLMs, fine-tuning has become\npossible for non-expert individuals, but intensively performed LLM fine-tuning\nworldwide could result in significantly high energy consumption and carbon\nfootprint, which may bring large environmental impact. Mitigating such\nenvironmental impact towards Green AI directly correlates to reducing the FLOPs\nof fine-tuning, but existing techniques on efficient LLM fine-tuning can only\nachieve limited reduction of such FLOPs, due to their ignorance of the\nbackpropagation cost in fine-tuning. To address this limitation, in this paper\nwe present GreenTrainer, a new LLM fine-tuning technique that adaptively\nevaluates different tensors' backpropagation costs and contributions to the\nfine-tuned model accuracy, to minimize the fine-tuning cost by selecting the\nmost appropriate set of tensors in training. Such selection in GreenTrainer is\nmade based on a given objective of FLOPs reduction, which can flexibly adapt to\nthe carbon footprint in energy supply and the need in Green AI. Experiment\nresults over multiple open-sourced LLM models and abstractive summarization\ndatasets show that, compared to fine-tuning the whole LLM model, GreenTrainer\ncan save up to 64% FLOPs in fine-tuning without any noticeable model accuracy\nloss. Compared to the existing fine-tuning techniques such as LoRa,\nGreenTrainer can achieve up to 4% improvement on model accuracy with on-par\nFLOPs reduction.",
+    "pdf_url": "http://arxiv.org/pdf/2309.13192v2",
+    "published": "2023-09-22"
+  },
+  "2404.12636v3": {
+    "title": "MORepair: Teaching LLMs to Repair Code via Multi-Objective Fine-tuning",
+    "authors": [
+      "Boyang Yang",
+      "Haoye Tian",
+      "Jiadong Ren",
+      "Hongyu Zhang",
+      "Jacques Klein",
+      "Tegawend\u00e9 F. Bissyand\u00e9",
+      "Claire Le Goues",
+      "Shunfu Jin"
+    ],
+    "summary": "Within the realm of software engineering, specialized tasks on code, such as\nprogram repair, present unique challenges, necessitating fine-tuning Large\nlanguage models~(LLMs) to unlock state-of-the-art performance. Fine-tuning\napproaches proposed in the literature for LLMs on program repair tasks\ngenerally overlook the need to reason about the logic behind code changes,\nbeyond syntactic patterns in the data. High-performing fine-tuning experiments\nalso usually come at very high computational costs. With MORepair, we propose a\nnovel perspective on the learning focus of LLM fine-tuning for program repair:\nwe not only adapt the LLM parameters to the syntactic nuances of the task of\ncode transformation (objective 1), but we also specifically fine-tune the LLM\nwith respect to the logical reason behind the code change in the training data\n(objective 2). Such a multi-objective fine-tuning will instruct LLMs to\ngenerate high-quality patches. We apply MORepair to fine-tune four open-source\nLLMs with different sizes and architectures. Experimental results on\nfunction-level and repository-level repair benchmarks show that the implemented\nfine-tuning effectively boosts LLM repair performance by 11.4% to 56.0%. We\nfurther show that our fine-tuning strategy yields superior performance compared\nto the state-of-the-art approaches, including standard fine-tuning,\nFine-tune-CoT, and RepairLLaMA.",
+    "pdf_url": "http://arxiv.org/pdf/2404.12636v3",
+    "published": "2024-04-19"
+  },
+  "2309.08859v1": {
+    "title": "Rethinking Learning Rate Tuning in the Era of Large Language Models",
+    "authors": [
+      "Hongpeng Jin",
+      "Wenqi Wei",
+      "Xuyu Wang",
+      "Wenbin Zhang",
+      "Yanzhao Wu"
+    ],
+    "summary": "Large Language Models (LLMs) represent the recent success of deep learning in\nachieving remarkable human-like predictive performance. It has become a\nmainstream strategy to leverage fine-tuning to adapt LLMs for various\nreal-world applications due to the prohibitive expenses associated with LLM\ntraining. The learning rate is one of the most important hyperparameters in LLM\nfine-tuning with direct impacts on both fine-tuning efficiency and fine-tuned\nLLM quality. Existing learning rate policies are primarily designed for\ntraining traditional deep neural networks (DNNs), which may not work well for\nLLM fine-tuning. We reassess the research challenges and opportunities of\nlearning rate tuning in the coming era of Large Language Models. This paper\nmakes three original contributions. First, we revisit existing learning rate\npolicies to analyze the critical challenges of learning rate tuning in the era\nof LLMs. Second, we present LRBench++ to benchmark learning rate policies and\nfacilitate learning rate tuning for both traditional DNNs and LLMs. Third, our\nexperimental analysis with LRBench++ demonstrates the key differences between\nLLM fine-tuning and traditional DNN training and validates our analysis.",
+    "pdf_url": "http://arxiv.org/pdf/2309.08859v1",
+    "published": "2023-09-16"
   }
 }

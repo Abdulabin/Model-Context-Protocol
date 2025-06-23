@@ -12,7 +12,7 @@
                 "run",
                 "D:/my_projects/mcp_server/server.py"
             ],
-            "transportType": "stdio"
+            "transport_type": "stdio"
         },
         "youtube-subtitle-extractor": {
             "autoApprove": [
@@ -29,7 +29,7 @@
                 "run",
                 "D:/my_projects/Gen_AI_Projects/model_context_protocol/mcp_project_one/mcp_servers/youtube_server.py"
             ],
-            "transportType": "stdio"
+            "transport_type": "stdio"
         },
         "Arxiv_researcher": {
             "disabled": false,
@@ -43,7 +43,7 @@
                 "run",
                 "D:/my_projects/Gen_AI_Projects/model_context_protocol/mcp_project_one/mcp_servers/arxiv_server.py"
             ],
-            "transportType": "stdio"
+            "transport_type": "stdio"
         }
     }
 }

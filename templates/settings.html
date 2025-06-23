@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+
+{% block title %}LLM & Server Configurations{% endblock %}
+
+{% block content %}
+
+<form method="POST" onsubmit="return handleLLMSubmit(event)">
+
+    <h2>🔧 LLM Configuration</h2>
+
+    <label for="provider">Provider</label>
+    <select name="provider" id="provider">
+        <option value="google" {% if llm_config and llm_config.provider == 'google' %}selected{% endif %}>Google</option>
+        <option value="Anthropic" {% if llm_config and llm_config.provider == 'Anthropic' %}selected{% endif %}>Anthropic</option>
+        <option value="Mistral" {% if llm_config and llm_config.provider == 'Mistral' %}selected{% endif %}>Mistral</option>
+        <option value="Cohere" {% if llm_config and llm_config.provider == 'Cohere' %}selected{% endif %}>Cohere</option>
+    </select>
+
+    <label for="model_name">Model Name:</label>
+    <input type="text" name="model_name" id="model_name" value="{{ llm_config.model_name if llm_config else '' }}" placeholder="e.g., gemini-1.5-pro, gemini-2.0-flash-lite etc.">
+
+    <label for="api_key">API Key:</label>
+    <input type="password" name="api_key" id="api_key" value="{{ llm_config.api_key if llm_config else '' }}" placeholder="Enter your API key here">
+
+    <hr style="margin: 2rem 0; border-color: #37474f;">
+
+    <details close>
+        <summary style="font-weight: 700; font-size: 1.2rem; margin-bottom: 1rem; cursor: pointer;">
+            🛠️ Edit MCP Server Configurations
+        </summary>
+        <textarea name="server_config" style="height: 300px;">{{ config_text }}</textarea>
+    </details>
+
+    {% if server_names %}
+        <h3>🧩 MCP Servers Detected</h3>
+        <div>
+            {% for server_name, config in server_names.items() %}
+                <div class="server-card">
+                    <div class="server-header">
+                        <!-- <span class="server-name" >{{ server_name }}</span> -->
+                        <span class="server-name" style="font-weight:bold; font-size:1.2em;">{{ server_name }}</span>
+                        <label class="switch" title="Toggle server active state">
+                            <input type="checkbox" name="disabled_{{ server_name }}" {% if config.active %}checked{% endif %}>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    {% if config.tools %}
+                    <div class="tools-list" aria-label="Tools available on {{ server_name }}">
+                        {% for tool in config.tools %}
+                        <span class="tool-pill" style="display:inline-block; background:#1b7be1; color:#fff; padding:4px 10px; border-radius:12px; margin-right:6px; font-size:0.9em;">{{ tool }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <input type="submit" name="save_llm" value="Save LLM Config">
+        <input type="submit" name="save_servers" value="Save Server Configs">
+        <input type="submit" name="load_servers" value="Load MCP Servers">
+    </div>
+
+    <div id="loading-indicator">
+        <span class="spinner"></span> Processing...
+    </div>
+</form>
+
+<script>
+    function handleLLMSubmit(event) {
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'block';
+        }
+        return true;  // Allow form submission
+    }
+</script>
+
+{% endblock %}

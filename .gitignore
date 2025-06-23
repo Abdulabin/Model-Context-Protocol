@@ -10,3 +10,4 @@ wheels/
 .venv
 playground.ipynb
 testing_play.py
+.env

@@ -1,19 +1,5 @@
 {
     "mcpServers": {
-        "default-server": {
-            "disabled": true,
-            "timeout": 60,
-            "command": "uv",
-            "args": [
-                "run",
-                "--with",
-                "mcp",
-                "mcp",
-                "run",
-                "D:/my_projects/mcp_server/server.py"
-            ],
-            "transport_type": "stdio"
-        },
         "youtube-subtitle-extractor": {
             "autoApprove": [
                 "get_subtitlefor_video"
@@ -27,7 +13,7 @@
                 "mcp",
                 "mcp",
                 "run",
-                "D:/my_projects/Gen_AI_Projects/model_context_protocol/mcp_project_one/mcp_servers/youtube_server.py"
+                "mcp_servers/youtube_server.py"
             ],
             "transport_type": "stdio"
         },
@@ -41,9 +27,25 @@
                 "mcp",
                 "mcp",
                 "run",
-                "D:/my_projects/Gen_AI_Projects/model_context_protocol/mcp_project_one/mcp_servers/arxiv_server.py"
+                "mcp_servers/arxiv_server.py"
             ],
             "transport_type": "stdio"
+        },
+        "gradio":{
+            "disabled": true,
+            "timeout": 60,
+            "command": "npx",
+            "args": [
+                "mcp-remote",
+                "http://127.0.0.1:7860/gradio_api/mcp/sse"
+            ],
+            "transport_type": "stdio"
+        },
+        "SSE_Transport":{
+            "disabled": true,
+            "timeout": 60,
+            "url":"http://localhost:8080/sse",
+            "transport_type": "sse"
         }
     }
 }

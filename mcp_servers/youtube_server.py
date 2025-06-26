@@ -1,15 +1,30 @@
+import os
 import json
 import yt_dlp
+import asyncio
 import requests
 from collections import OrderedDict
 from mcp.server.fastmcp import FastMCP
 from urllib.parse import urlparse, parse_qs
-import asyncio
 
-mcp = FastMCP("YoutubeSubtitleExtractor")
+mcp = FastMCP(
+    name="YouTube_Video_QA_System",
+    instructions=(
+        "You are an assistant that answers questions about YouTube videos. "
+        "When a user asks a question about a video, first check if the subtitles are already stored locally. "
+        "If not, extract and store the subtitles automatically. "
+        "Use the subtitles to understand the video content and provide accurate answers. "
+        "All responses should be based strictly on the information available in the subtitles."
+    )
+)
 
-############ HELPER FUNCTIONS ###########################################
+# Path to store subtitles
+save_path = os.path.join(os.getcwd(), "dumped_data", "saved_subtitles.json")
+
+# ------------------------- Helper Functions ---------------------------- #
+
 def save_data(save_path, video_id, subs_data, keep=5):
+    """Save up to `keep` most recent subtitles in a JSON file."""
     try:
         with open(save_path, "r+", encoding="utf-8") as f:
             try:
@@ -18,11 +33,9 @@ def save_data(save_path, video_id, subs_data, keep=5):
                 dict_data = OrderedDict()
 
             if len(dict_data) >= keep:
-                first_key = next(iter(dict_data))
-                dict_data.pop(first_key)
+                dict_data.pop(next(iter(dict_data)))  # Remove oldest
 
             dict_data[video_id] = subs_data
-
             f.seek(0)
             f.truncate()
             json.dump(dict_data, f, indent=4)
@@ -36,16 +49,13 @@ def get_youtube_video_id(url):
     return query_params.get("v", [None])[0]
 
 def fetch_timedtext_subtitles(timedtext_url: str) -> str:
-    """
-    Fetches subtitles from YouTube's timedtext API and returns them with timestamps..
-    """
+    """Fetch subtitles from YouTube's timedtext URL and return with timestamps."""
     try:
         response = requests.get(timedtext_url)
         response.raise_for_status()
         data = response.json()
-        events = data.get("events", [])
         subtitles = ""
-        for event in events:
+        for event in data.get("events", []):
             if "segs" in event and "tStartMs" in event:
                 time = int(event["tStartMs"]) / 1000
                 text = "".join(seg.get("utf8", "") for seg in event["segs"])
@@ -55,23 +65,22 @@ def fetch_timedtext_subtitles(timedtext_url: str) -> str:
     except Exception as e:
         return f"Error fetching subtitles: {e}"
 
-###################  MAIN TOOLS ############################################################
+# ------------------------- Main Tools ---------------------------- #
 
 # @mcp.tool(
-#     name="download_subs",
-#     description="Extracts subtitles with timestamps for a YouTube video.",
+#     name="Extract_YouTube_Subtitles",
+#     description="Downloads subtitles with timestamps from a YouTube video in the specified language."
 # )
-def get_subtitles(video_url: str, save_path: str="D:\my_projects\Gen_AI_Projects\model_context_protocol\mcp_project_one\dumped_data\saved_subtitles.json", lang: str = "en") -> str:
+async def extract_youtube_subtitles(video_url: str, lang: str = "en") -> str:
     """
-    Downloads subtitles and their timestamps from a YouTube video.
+    Extracts and stores subtitles from a YouTube video.
 
     Args:
         video_url (str): The URL of the YouTube video.
-        save_path (str): Path to store the subtitle JSON data.
-        lang (str): Language code of the subtitles (e.g., 'en', 'hi'). Default is 'en'.
+        lang (str): Subtitle language code (default is 'en').
 
     Returns:
-        str: Subtitles with timestamps, or an error message if subtitles are unavailable.
+        str: Subtitles with timestamps or an error message.
     """
     ydl_opts = {
         "quiet": True,
@@ -82,8 +91,8 @@ def get_subtitles(video_url: str, save_path: str="D:\my_projects\Gen_AI_Projects
         "dump_single_json": True,
     }
     try:
-        vedio_id = get_youtube_video_id(video_url)
-        if vedio_id:
+        video_id = get_youtube_video_id(video_url)
+        if video_id:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
                 subs = info.get("automatic_captions") or info.get("subtitles")
@@ -91,45 +100,45 @@ def get_subtitles(video_url: str, save_path: str="D:\my_projects\Gen_AI_Projects
                 if not subs or lang not in subs:
                     return "No subtitles found for the requested language."
 
-                # Filter out 'ios' subtitle sources
+                # Avoid 'ios' clients
                 entries = [entry for entry in subs[lang] if entry.get("__yt_dlp_client") != "ios"]
                 if not entries:
-                    return "No suitable subtitle source found (non-iOS only)."
+                    return "No suitable subtitle source found."
 
                 subtitle_url = entries[0]["url"]
                 subtitle_text = fetch_timedtext_subtitles(subtitle_url)
 
-                subtitles =  f"Title: {info.get('title', 'Unknown')}\n\nSubtitles : {subtitle_text}"
-                save_data(save_path, vedio_id, subtitles)
+                subtitles = f"Title: {info.get('title', 'Unknown')}\n\nSubtitles:\n{subtitle_text}"
+                save_data(save_path, video_id, subtitles)
                 return subtitles
-                # return mcp.get_prompt("summarize_youtube_vedio",{"subtitles":subtitles})
         else:
-            return "Invalid YouTube video URL. Please provide a correct link."
+            return "Invalid YouTube video URL."
     except Exception as e:
         return f"Error extracting subtitles: {e}"
 
+
 @mcp.tool(
-    name="get_youtube_vedio_stored_subtitles",
-    description="Checks if subtitles for a given YouTube video are already stored locally. If not found, it auto-fetches them."
+    name="Get_YouTube_Subtitles",
+    description="Returns subtitles for a YouTube video. Checks locally first; if not found, downloads and stores them with timestamps."
 )
-async def get_stored_subtitles(
-    video_url: str,
-    save_path: str = r"D:\my_projects\Gen_AI_Projects\model_context_protocol\mcp_project_one\dumped_data\saved_subtitles.json"
-) -> str:
+async def load_or_extract_youtube_subtitles(video_url: str, lang: str = "en") -> str:
     """
-    Checks if subtitles for a YouTube video have already been stored.
-    If not, it triggers subtitle extraction automatically using another MCP tool.
+    Retrieves subtitles for a YouTube video to support user Q&A.
+
+    - First checks if subtitles are already stored locally.
+    - If not, downloads and stores them in the specified language with timestamps.
+    - Returns the subtitle text, based on which user queries can be answered.
 
     Args:
         video_url (str): The full YouTube video URL.
-        save_path (str): Path to the local JSON file storing subtitles.
+        lang (str): Language code for subtitles (default is 'en').
 
     Returns:
-        str: Stored subtitles if available, or fetched subtitles from YouTube.
+        str: Subtitles with timestamps, or an error message.
     """
     video_id = get_youtube_video_id(video_url)
     if not video_id:
-        return "Invalid YouTube video URL. Please provide a correct link."
+        return "Invalid YouTube video URL."
 
     try:
         with open(save_path, "r", encoding="utf-8") as f:
@@ -138,25 +147,23 @@ async def get_stored_subtitles(
         if video_id in dict_data:
             return dict_data[video_id]
 
-        # 🔁 Subtitles not found locally, call the extraction tool
-        subtitles=  await mcp.call_tool("download_subs", {
-                                                "video_url": video_url,
-                                                "save_path": save_path 
-                                            })
-        return 
-    
+        # If not found, extract subtitles
+        # subtitles = await mcp.call_tool("Extract_YouTube_Subtitles", {
+        #     "video_url": video_url
+        # })
+        subtitles = await extract_youtube_subtitles(video_url,lang=lang)
+        return subtitles
+
     except FileNotFoundError:
-        # File doesn't exist yet, trigger subtitle extraction
-        subtitles =  await mcp.call_tool("download_subs", {
-                            "video_url": video_url,
-                            "save_path": save_path  
-                        })
+        # subtitles = await mcp.call_tool("Extract_YouTube_Subtitles", {
+        #     "video_url": video_url
+        # })
+        subtitles = await extract_youtube_subtitles(video_url,lang=lang)
         return subtitles
     except Exception as e:
-        return f"Unexpected error while checking stored subtitles: {e}"
+        return f"Unexpected error while checking subtitles: {e}"
 
-
-
+# ------------------------- Run MCP ---------------------------- #
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

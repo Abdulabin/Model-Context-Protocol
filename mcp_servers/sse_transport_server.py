@@ -1,33 +1,4 @@
-# import gradio as gr
 
-# def letter_counter(word, letter):
-#     """
-#     Count the number of occurrences of a letter in a word or text.
-
-#     Args:
-#         word (str): The input text to search through
-#         letter (str): The letter to search for
-
-#     Returns:
-#         str: A message indicating how many times the letter appears
-#     """
-#     word = word.lower()
-#     letter = letter.lower()
-#     count = word.count(letter)
-#     return count
-
-# demo = gr.Interface(
-#     fn=letter_counter,
-#     inputs=[gr.Textbox("strawberry"), gr.Textbox("r")],
-#     outputs=[gr.Number()],
-#     title="Letter Counter",
-#     description="Enter text and a letter to count how many times the letter appears in the text."
-# )
-
-# if __name__ == "__main__":
-#     demo.launch(mcp_server=True)
-
-# sse_server.py
 from mcp.server.fastmcp import FastMCP
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
@@ -36,7 +7,6 @@ from starlette.requests import Request
 from starlette.routing import Mount, Route
 import uvicorn
 
-# Create the MCP server
 mcp = FastMCP("SSE Example Server")
 
 @mcp.tool()
@@ -54,11 +24,7 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
     sse = SseServerTransport("/messages/")
 
     async def handle_sse(request: Request) -> None:
-        async with sse.connect_sse(
-                request.scope,
-                request.receive,
-                request._send,
-        ) as (read_stream, write_stream):
+        async with sse.connect_sse(request.scope,request.receive,request._send,) as (read_stream, write_stream):
             await mcp_server.run(
                 read_stream,
                 write_stream,

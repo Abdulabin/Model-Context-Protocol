@@ -314,6 +314,10 @@ async def handle_server_config(request: Request):
 
 @app.get("/chat", name="chat")
 async def chat_page(request: Request):
+    if not os.path.exists(CHAT_HISTORY_FILE):
+        with open(CHAT_HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f)  
+
     with open(CHAT_HISTORY_FILE, "r", encoding="utf-8") as f:
         chats = json.load(f)
 

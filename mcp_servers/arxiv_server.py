@@ -68,7 +68,7 @@ def search_arxiv_papers(topic: str, max_results: int = 5) -> List[str]:
     name="Get_Paper_Info_By_ID",
     description="Retrieves detailed metadata for a specific research paper using its arXiv ID."
 )
-def get_research_paper_info(paper_id: List[str]) -> str:
+def get_research_paper_info(paper_id: str) -> str:
     """
     Retrieves detailed metadata for a paper from stored arXiv search results.
 

@@ -27,7 +27,7 @@ class MCPClient:
         """Initializes the MCPClient."""
         load_dotenv()
         self.logger = self._setup_logger()
-        self.logger.info("MCPClient initializing...")
+        self.logger.info("MCPClient Object Created...")
 
         self.exit_stack: AsyncExitStack = AsyncExitStack()
         self.cleanup_lock: asyncio.Lock = asyncio.Lock()
@@ -38,7 +38,6 @@ class MCPClient:
         
         self.model_name: Optional[str] = None
         self.llm_client: Optional[genai.Client] = None
-        self.logger.info("MCPClient initialized.")
 
     def _setup_logger(self) -> logging.Logger:
         logger = logging.getLogger("mcp-client")

@@ -11,3 +11,6 @@ wheels/
 playground.ipynb
 testing_play.py
 .env
+chat_history.json
+mcp-client.log
+dumped_data

@@ -38,6 +38,8 @@ class MCPClient:
         
         self.model_name: Optional[str] = None
         self.llm_client: Optional[genai.Client] = None
+        self.CHAT_HISTORY_FILE = "chat_history.json"
+
 
     def _setup_logger(self) -> logging.Logger:
         logger = logging.getLogger("mcp-client")
@@ -218,6 +220,101 @@ class MCPClient:
                     return {"error": f"Tool '{name}' failed after {retries} attempts with error: {str(e)}"}
         return {"error": f"Tool '{name}' failed after all retries."} # Should not be reached
 
+    def build_reformulation_prompt(self, chats, new_query, n=5):
+        system_text = (
+            "You are a query reformulator, specializing in context-aware rewriting. Your job is *only* to rewrite user queries.\n"
+            "Given a new user query and recent conversation history, your goal is to produce a clear, concise, self-contained, grammatically correct, and correctly spelled query, while trying to understand the user's intent.\n"
+            "If the query is contextually relevant to the conversation, reformulate it accordingly.\n"
+            "If the query is unrelated, ambiguous, or unclear, return the original query, corrected for grammar and spelling where possible.\n"
+            "Do not provide explanations or answer the query; only output the final, reformulated query.\n"
+            "\n"
+            "**Instructions:**\n"
+            "1.  Carefully analyze the user's new query and the preceding conversation to understand the user's intent.\n"
+            "2.  Check for grammar and spelling errors in the user's query and correct them.\n"
+            "3.  Determine if the new query refers to information discussed earlier in the conversation.\n"
+            "4.  If contextually relevant, rewrite the query, incorporating relevant details from the conversation to make it self-contained, grammatically correct, and correctly spelled.\n"
+            "5.  If not contextually relevant or unclear, return the original query, after correcting grammar and spelling.\n"
+            "\n"
+            "### Few-shot Examples:\n"
+            "Conversation:\n"
+            "User: What’s the latest iPhone model?\n"
+            "Assistant: The latest iPhone model is the iPhone 15 Pro Max.\n"
+            "User: How much dose it cost?\n"
+            "→ Reformulated: How much does the iPhone 15 Pro Max cost?\n"
+            "\n"
+            "Conversation:\n"
+            "User: Who founded Tesla?\n"
+            "Assistant: Tesla was founded by Martin Eberhard and Marc Tarpenning, but Elon Musk later became a key figure.\n"
+            "User: Were is he now?\n"
+            "→ Reformulated: Where is Elon Musk now?\n"
+            "\n"
+            "Conversation:\n"
+            "User: Hi\n"
+            "→ Reformulated: Hi\n"
+            "\n"
+            "Conversation:\n"
+            "User: Tell me a story.\n"
+            "Assistant: Sure! What kind of story would you like?\n"
+            "User: about a cat\n"
+            "→ Reformulated: Tell me a story about a cat.\n"
+            "\n"
+            "Conversation:\n"
+            "User:  what is the wether today?\n"
+            "→ Reformulated: What is the weather today?\n"
+        )
+
+        system_part = types.Content(role="model", parts=[Part.from_text(text=system_text)])
+        past_conv = [system_part]
+
+        for msg in chats[-n:]:
+            past_conv.append(types.Content(role="user", parts=[Part.from_text(text=msg["User"])]))
+            past_conv.append(types.Content(role="assistant", parts=[Part.from_text(text=msg["Assistant"])]))
+
+        past_conv.append(types.Content(role="user", parts=[Part.from_text(text=new_query)]))
+        return past_conv
+    
+    def save_chat(self, response: dict):
+        try:
+            filename = self.CHAT_HISTORY_FILE
+            if os.path.exists(filename):
+                with open(filename, "r", encoding="utf-8") as f:
+                    chats = json.load(f)
+                    if not isinstance(chats, list):
+                        chats = []
+            else:
+                chats = []
+            chats.append(response)
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(chats, f, indent=4)
+        except Exception as e:
+            self.logger.error(f"Failed to save chat: {e}")
+
+    def get_recent_chats(self, n=5,):
+        try:
+            with open(self.CHAT_HISTORY_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+
+    async def reformulate_query(self,new_query, n=5):
+        self.logger.debug(f"-------- Reformulating New User Query  --------")
+
+        self.logger.debug(f"Starting query reformulation for: '{new_query}'")
+        
+        chats = self.get_recent_chats(n)
+        self.logger.debug(f"Loaded last {n} chat(s) for context: {len(chats)} message pairs")
+
+        payload = self.build_reformulation_prompt(chats, new_query, n)
+        self.logger.debug(f"Sending reformulation prompt to LLM with total parts: {len(payload)}")
+
+        try:
+            resp = await self.generate_content(payload, without_tools=True)
+            self.logger.debug(f"Reformulated query: '{resp.text.strip()}'")
+            return resp.text
+        except Exception as e:
+            self.logger.error(f"Failed to reformulate query: {e}", exc_info=True)
+            return new_query 
+
     async def process_user_query(self, query:str, max_tool_calls:int = 10) -> str:
         def mentions_tool_call(resp_content: Part) -> bool:
             return any(getattr(part, "function_call", None) for part in resp_content.parts)
@@ -258,12 +355,15 @@ Your tasks:
 
 Your role: Reason, plan, and act — one tool call per turn — until the task is fully resolved.
 """
-
         self.logger.info(f"-------- New Query Processing Started --------")
         self.logger.info(f"User Query: '{query}'")
-        
+
+        reformulated_query =  await self.reformulate_query(query)
+
+        self.logger.info(f"Reformulated User Query: '{reformulated_query.strip()}'")
+
         system_part = types.Content(role="model", parts=[types.Part.from_text(text=system_prompt)])
-        user_part = types.Content(role="user", parts=[types.Part.from_text(text=query)])
+        user_part = types.Content(role="user", parts=[types.Part.from_text(text=reformulated_query)])
 
         contents = [system_part, user_part]
         call_num = 0
@@ -302,6 +402,7 @@ Your role: Reason, plan, and act — one tool call per turn — until the task i
                 call_num += 1
             else:
                 final_answer = response.text
+                self.save_chat({"User": query, "Assistant": final_answer})
                 self.logger.info(f"Final Answer generated: {final_answer}")
                 self.logger.info(f"-------- Query Processing Finished --------")
                 return final_answer

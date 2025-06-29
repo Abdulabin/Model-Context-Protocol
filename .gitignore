@@ -13,4 +13,6 @@ testing_play.py
 .env
 chat_history.json
 mcp-client.log
-dumped_data
+*dumped_data
+dumped_data\papers_info.json
+dumped_data\saved_subtitles.json

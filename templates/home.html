@@ -1,0 +1,189 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="homecontainer">
+
+  <h1>🌐 Welcome to MCP-Client App</h1>
+  <p><strong>MCP-Client</strong> is a lightweight web application that connects Large Language Models (LLMs) to powerful tools using <strong>MCP (Model Context Protocol)</strong>. It also supports <strong>multi-turn conversation</strong>—allowing the AI to maintain and respond with context across interactions.</p>
+
+  <div class="section">
+    <h2>🧠 What is MCP?</h2>
+    <p><strong>MCP (Model Context Protocol)</strong> is a powerful protocol that lets Language Models communicate with external tools in a standardized, intelligent, and context-aware way.</p>
+    <ul style="padding-left: 2em; list-style-position: inside;">
+      <li>💡 <strong>Smarter AI</strong> – Lets your AI talk to real tools like APIs or databases.</li>
+      <li>🧠 <strong>Context-Aware</strong> – Remembers previous questions and answers.</li>
+      <li>🔧 <strong>Flexible</strong> – Choose from open-source models and multiple tool types.</li>
+      <li>🧱 <strong>Modular</strong> – Easily switch tools or models without code changes.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>🛠 What is MCP-Client?</h2>
+    <p><strong>MCP-Client</strong> is a lightweight, web-based application that lets you:</p>
+    <ul style="padding-left: 2em; list-style-position: inside;">
+      <li>✅ Chat with LLMs</li>
+      <li>✅ Connect them to real tools</li>
+      <li>✅ Choose transport types (STDIO or SSE)</li>
+      <li>✅ Configure everything through a UI</li>
+      <li>✅ Explore logs and chat history</li>
+      <li>✅ Engage in multi-turn conversations with context memory</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>🌟 Key Features</h2>
+    <table>
+      <tr>
+        <th>Feature</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>💬 Chat with AI</td>
+        <td>Conversational interface with memory and intelligence.</td>
+      </tr>
+      <tr>
+        <td>🔧 Multiple Tools Support</td>
+        <td>Connect LLMs to Multiple external tools for advanced capabilities.</td>
+      </tr>
+      <tr>
+        <td>⚙️ Easy Setup</td>
+        <td>Enter API keys and model names from a simple settings page.</td>
+      </tr>
+      <tr>
+        <td>🔄 Multi-Transport</td>
+        <td>Supports STDIO and SSE for connecting to tool servers.</td>
+      </tr>
+      <tr>
+        <td>📝 Log Viewer</td>
+        <td>Track interactions and debug problems easily.</td>
+      </tr>
+      <tr>
+        <td>🔁 Multi-Turn Conversations</td>
+        <td>Maintains context across multiple user queries and responses for more natural and intelligent dialogue.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>🔁 Supported Transport Methods</h2>
+    <h4>🖥 STDIO (Standard Input/Output)</h4>
+    <ul style="padding-left: 2em; list-style-position: inside;">
+      <li>Ideal for local scripts or command-line tools.</li>
+      <li>Sends input via STDIN, receives responses via STDOUT.</li>
+    </ul>
+
+    <h4>🌐 SSE (Server-Sent Events)</h4>
+    <ul style="padding-left: 2em; list-style-position: inside;">
+      <li>Connects to external HTTP servers that support streaming.</li>
+      <li>Receives asynchronous events and streaming updates.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>🧾 MCP Config JSON Schema</h2>
+    <p>
+      To connect your tools with the MCP-Client, define them in a config file. 
+      Each server must have a unique name and define how it's connected — either via <strong>STDIO</strong> or <strong>SSE</strong>.
+    </p>
+    <p>Here's how to structure your config:</p>
+
+    <h4>✅ STDIO Example:</h4>
+    <p>This configuration launches a local script or CLI-based tool using <code>stdio</code> transport.</p>
+    <pre><code>{
+  "My-Local-Tool": {
+    "disabled": false,
+    "command": "python3",
+    "args": ["tool.py"],
+    "transport_type": "stdio"
+  }
+}</code></pre>
+
+    <h4>🌐 SSE Example:</h4>
+    <p>This connects to a remote server over HTTP using <code>sse</code> transport.</p>
+    <pre><code>{
+  "My-Remote-API": {
+    "disabled": false,
+    "transport_type": "sse",
+    "url": "http://localhost:8080/sse",
+    "timeout": 60
+  }
+}</code></pre>
+
+    <h4>📁 Full Sample Config (Used in Settings Page):</h4>
+    <p>
+      Wrap your tools inside a top-level array as shown below. 
+      You can define one or more servers under the <code>mcpServers</code> key.
+    </p>
+    <pre><code>[
+  {
+    "mcpServers": {
+      "LocalScript": {
+        "disabled": false,
+        "command": "uvicorn",
+        "args": ["server:app", "--port", "8001"],
+        "transport_type": "stdio"
+      },
+      "WeatherAPI": {
+        "disabled": true,
+        "transport_type": "sse",
+        "url": "https://api.weather.example.com/sse",
+        "timeout": 30
+      }
+    }
+  }
+]</code></pre>
+
+    <h4>💡 Tips & Suggestions:</h4>
+    <ul style="padding-left: 2em; list-style-position: inside;">
+      <li>Use unique names for each server key inside <code>mcpServers</code>.</li>
+      <li>Set <code>"disabled": true</code> to temporarily turn off a server without removing it.</li>
+      <li><code>command</code> and <code>args</code> are required for <strong>STDIO</strong> tools.</li>
+      <li><code>url</code> and optional <code>timeout</code> are required for <strong>SSE</strong> tools.</li>
+      <li>Keep your config valid JSON and use the Settings page to load or edit it.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>🧭 Pages in MCP-Client</h2>
+    <table>
+      <tr>
+        <th>Page</th>
+        <th>Purpose</th>
+      </tr>
+      <tr>
+        <td>🏠 Home</td>
+        <td>Quick intro and documentation.</td>
+      </tr>
+      <tr>
+        <td>⚙️ Settings</td>
+        <td>Configure API keys, models, and tool server JSON configs.</td>
+      </tr>
+      <tr>
+        <td>💬 Chat</td>
+        <td>Talk to your AI assistant and get answers.</td>
+      </tr>
+      <tr>
+        <td>📜 Logs</td>
+        <td>View logs for debugging and development.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>🎯 Ideal Use-Cases</h2>
+    <ul style="padding-left: 2em; list-style-position: inside;">
+      <li>💬 Smart Q&A chatbots with tool support</li>
+      <li>🔍 Research assistants using live APIs</li>
+      <li>🛠 AI Dev environments with real-time agents</li>
+      <li>📚 Educational tools demonstrating AI + Tools</li>
+    </ul>
+  </div>
+
+  <div class="section summary-box">
+    <h2>✅ Summary</h2>
+    <p><strong>MCP-Client</strong> combines the intelligence of LLMs with the power of real-world tools—fully configurable, extensible, and built for developers, researchers, and innovators alike.</p>
+    <p>It also supports <strong>multi-turn conversations</strong>, enabling more natural, context-aware interactions just like talking to a real assistant.</p>
+    <p><em>Connect your tools. Configure your model. Start chatting. 🚀</em></p>
+  </div>
+</div>
+{% endblock %}

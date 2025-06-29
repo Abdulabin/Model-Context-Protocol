@@ -62,14 +62,14 @@ class MCPClient:
         for name, conf in server_config.items():
             if conf.get("disabled", False):
                 self.logger.info(f"Server '{name}' is disabled, skipping.")
-                self.servers[name] = {"session": None, "active": False, "tools": []}
+                self.servers[name] = {"session": None, "active": False, "tools": [],"msg":None}
                 continue
 
             self.logger.info(f"Setting up server '{name}'")
             transport_type = conf.get("transport_type")
             if not transport_type:
                 self.logger.warning(f"Transport type not specified for server '{name}'. Skipping.")
-                self.servers[name] = {"session": None, "active": False, "tools": []}
+                self.servers[name] = {"session": None, "active": False, "tools": [],"msg":f"Transport type not specified for server '{name}'."}
                 continue
 
             try:
@@ -78,9 +78,9 @@ class MCPClient:
                     await self._register_server_tools(name, session)
             except Exception as e:
                 self.logger.error(f"Failed to initialize server '{name}': {e}", exc_info=True)
-                self.servers[name] = {"session": None, "active": False, "tools": []}
-                await self.shutdown()
-                raise MCPClientError(f"Failed to initialize server '{name}'") from e
+                self.servers[name] = {"session": None, "active": False, "tools": [],"msg":f"Failed to initialize server '{name}':{e.__str__().splitlines()[0]}"}
+                # await self.shutdown()
+                # raise MCPClientError(f"Failed to initialize server '{name}'") from e
         self.logger.info("Server initialization complete.")
 
     async def _connect_to_server(self, name: str, transport_type: str, conf: dict) -> Optional[ClientSession]:
@@ -90,7 +90,8 @@ class MCPClient:
             cmd = conf.get("command")
             args = conf.get("args", [])
             if not isinstance(cmd, str) or not args:
-                    raise MCPClientError(f"Invalid command or args for server '{name}'")
+                self.logger.error(f"Invalid command or args for server '{name}'")
+                    # raise MCPClientError(f"Invalid command or args for server '{name}'")
 
             binary = shutil.which(cmd) or cmd
             env = conf.get("env")
@@ -100,7 +101,9 @@ class MCPClient:
 
             server_url = conf.get("url",None)
             if not server_url:
-                raise MCPClientError(f"URL not specified for SSE server '{name}'")
+                self.logger.error(f"URL not specified for SSE server '{name}'")
+
+                # raise MCPClientError(f"URL not specified for SSE server '{name}'")
             timeout = conf.get("timeout",60)
             transport = await self.exit_stack.enter_async_context(sse_client(url=server_url, timeout=timeout))
         else:
@@ -131,7 +134,8 @@ class MCPClient:
         self.servers[name] = {
             "session": session,
             "active": True,
-            "tools": tools
+            "tools": tools,
+            "msg":None
         }
 
     def clean_schema(self, schema: Dict[str, Any]) -> Dict[str, Any]:
@@ -160,7 +164,7 @@ class MCPClient:
 
         if not api_key or not self.model_name:
             self.logger.error("LLM API key or model name is missing in the configuration.")
-            raise MCPClientError("Missing LLM configuration")
+            # raise MCPClientError("Missing LLM configuration")
 
         try:
             self.llm_client = genai.Client(api_key=api_key)
@@ -171,30 +175,34 @@ class MCPClient:
         except Exception as e:
             self.llm_client = None
             self.logger.error(f"Failed to connect to LLM: {e}", exc_info=True)
-            raise MCPClientError(f"Failed to connect to LLM: {str(e)}")
+            # raise MCPClientError(f"Failed to connect to LLM: {str(e)}")
 
-    async def generate_content(self, contents: List[types.Content]) -> types.GenerateContentResponse:
+    async def generate_content(self, contents: List[types.Content], without_tools= False) -> types.GenerateContentResponse:
         if not self.llm_client or not self.model_name:
             self.logger.error("LLM client or model name not initialized before calling generate_content.")
             raise RuntimeError("LLM not initialized. Call connect_llm first.")
 
         self.logger.debug(f"Generating content with model '{self.model_name}' and {len(self.formatted_tools)} tools.")
         try:
+            tool_config= None
+            if not without_tools:
+                tool_config = types.GenerateContentConfig(tools=self.formatted_tools) if self.formatted_tools else None
+            
             return self.llm_client.models.generate_content(
                 model=self.model_name,
                 contents=contents,
-                config=types.GenerateContentConfig(tools=self.formatted_tools) if self.formatted_tools else None
+                config=tool_config
             )
         except Exception as e:
             self.logger.error(f"LLM content generation failed: {e}", exc_info=True)
-            raise MCPClientError(f"LLM generation failed: {str(e)}")
+            # raise MCPClientError(f"LLM generation failed: {str(e)}")
 
     async def invoke_tool(self, name: str, args: Any, retries: int = 2, delay: float = 1.0) -> Dict[str, Any]:
         self.logger.info(f"Attempting to invoke tool '{name}' with args: {args}")
         session = self.tool_to_session.get(name)
         if not session:
             self.logger.error(f"Tool '{name}' not found or its server is inactive.")
-            raise MCPClientError(f"Tool '{name}' not available")
+            # raise MCPClientError(f"Tool '{name}' not available")
 
         for attempt in range(retries):
             try:
@@ -218,37 +226,39 @@ class MCPClient:
 
 Your tasks:
 
-1. When the user asks a question:
-   - Determine whether the query can be answered directly or requires tool use.
-   - If tools are needed, **create a workflow** using ONLY the available tools.
+1. **Determine Query Type**
+   - If a question can be answered directly, provide the answer clearly.
+   - If tools are needed, design a workflow using ONLY the available tools.
 
-2. Tool usage instructions:
-   - Design a **step-by-step plan** to answer the question using tools.
-   - On the **first response**, provide a short explanation AND immediately perform the **first tool call** using the `function_call` API.
-   - Do NOT delay execution — call the first tool in the same turn.
-   - After a tool is executed and its response is available, **analyze it** and **perform the next tool call** (if needed), step by step.
-   - Continue until all tool steps are completed.
+2. **Using Tools**
+   - Create a clear, step-by-step plan to solve the query.
+   - In your **first response**:
+     - Briefly explain your plan.
+     - Immediately invoke the **first tool** using `function_call`. Do **not** delay execution.
+   - After each tool call:
+     - Analyze the result.
+     - If more steps are needed, call the next tool using `function_call`.
+     - Repeat until the task is complete.
 
-3. Tool response handling:
-   - After receiving tool output, use it to inform the next step.
-   - Use `function_call` again for follow-up tool steps.
-    - Focus only on the most relevant insights.
-   - Avoid simply echoing the tool’s raw data.
-   - When all tool steps are complete, summarize the final answer naturally and concisely.
+3. **Handling Tool Responses**
+   - Use tool outputs to inform the next step.
+   - Extract relevant insights — avoid echoing raw data.
+   - Never simulate tool outputs or do calculations manually.
 
-4. Presentation:
-   - If the final response contains structured results (like lists, steps, calculations, comparisons), format it cleanly using **Markdown**.
-   - Use headings, bullet points, or code blocks when helpful.
-   - The goal is to make your response easier to read and understand.
-   
-  Rules:
-- Use `function_call` for each tool invocation. Do not describe the plan only in text.
-- Never simulate tool output or perform math in your head.
-- Do not invent tools or assume behavior not defined.
-- Only respond with plain text if **no tools are needed** at all.
+4. **Final Answer Formatting**
+   - Format results clearly using **Markdown**:
+     - Use headings, bullet points, or code blocks when helpful.
+   - Ensure the final response is concise, readable, and informative.
 
-Your job is to reason, plan, and act — one tool call per turn — until the solution is complete.
+**Rules**
+- Always use `function_call` for tool invocations.
+- Do not simulate or invent tools.
+- Only respond with plain text if tools are not needed.
+- Do **not** mention whether tools were used or not.
+
+Your role: Reason, plan, and act — one tool call per turn — until the task is fully resolved.
 """
+
         self.logger.info(f"-------- New Query Processing Started --------")
         self.logger.info(f"User Query: '{query}'")
         
@@ -284,8 +294,8 @@ Your job is to reason, plan, and act — one tool call per turn — until the so
                             self.logger.info(f"Tool `{tool_name}` result: {tool_result}")
                         except Exception as e:
                             self.logger.error(f"Tool `{tool_name}` failed during invocation: {e}", exc_info=True)
-                            raise MCPClientError(f"Tool `{tool_name}` failed: {e}")
-
+                            # raise MCPClientError(f"Tool `{tool_name}` failed: {e}")
+                        # tool_result = await self.tool_invoke_approval(tool_name,tool_args)
                         tool_response_part = types.Part.from_function_response(name=tool_name, response=tool_result)
                         tool_response_content = types.Content(role="tool", parts=[tool_response_part])
                         contents.append(tool_response_content)
@@ -298,7 +308,34 @@ Your job is to reason, plan, and act — one tool call per turn — until the so
         else:
             self.logger.warning(f"Reached maximum tool call limit of {max_tool_calls}.")
             return f"Reached maximum tool call limit ({max_tool_calls}). Please simplify the query or increase the limit."
-    
+        
+    async def tool_invoke_approval(self, tool_name, tool_args):
+
+        print("\n🔧 Tool Invocation Request")
+        print(f"Tool Name : {tool_name}")
+        print(f"Arguments : {tool_args}")
+        print("\nType 'y' to approve or 'n' to reject this tool call.")
+
+        user_response = ""
+        while user_response not in ("y", "n"):
+            user_response = input("Approve? [y/n]: ").strip().lower()
+
+        if user_response == "y":
+            try:
+                tool_result = await self.invoke_tool(tool_name, tool_args)
+                self.logger.info(f"Tool `{tool_name}` executed successfully. Result: {tool_result}")
+                return tool_result
+            except Exception as e:
+                self.logger.error(f"Tool `{tool_name}` failed during execution: {e}", exc_info=True)
+                # raise MCPClientError(f"Tool `{tool_name}` execution failed: {e}")
+
+        else:
+            msg = f"Tool invocation for `{tool_name}` was rejected by the user."
+            self.logger.warning(msg)
+            return {
+                "result": "User rejected the tool invocation request. Chat halted due to lack of required tool execution."
+            }
+
     async def _clear_server_resources(self):
         self.logger.debug("Clearing existing server resources.")
         self.servers.clear()
@@ -325,7 +362,7 @@ Your job is to reason, plan, and act — one tool call per turn — until the so
 
 async def main():
     load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = "AIzaSyACaAQPODxmm5WVoust1O1QKG_f8nWXRLo" #os.environ.get("GEMINI_API_KEY")
     model_name = "gemini-2.0-flash-lite"
     llm_config = {
         "provider": "google",

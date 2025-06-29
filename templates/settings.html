@@ -37,19 +37,23 @@
             {% for server_name, config in server_names.items() %}
                 <div class="server-card">
                     <div class="server-header">
-                        <!-- <span class="server-name" >{{ server_name }}</span> -->
                         <span class="server-name" style="font-weight:bold; font-size:1.2em;">{{ server_name }}</span>
                         <label class="switch" title="Toggle server active state">
                             <input type="checkbox" name="disabled_{{ server_name }}" {% if config.active %}checked{% endif %}>
                             <span class="slider round"></span>
                         </label>
                     </div>
+                    {% if config.msg %}
+                        <div class="error-message" style="background-color:#ffe5e5; color:#b30000; padding:8px 12px; border:1px solid #b30000; border-radius:4px; margin:10px 0;">
+                            {{ config.msg }}
+                        </div>
+                    {% endif %}
                     {% if config.tools %}
-                    <div class="tools-list" aria-label="Tools available on {{ server_name }}">
-                        {% for tool in config.tools %}
+                        <div class="tools-list" aria-label="Tools available on {{ server_name }}">
+                            {% for tool in config.tools %}
                         <span class="tool-pill" style="display:inline-block; background:#1b7be1; color:#fff; padding:4px 10px; border-radius:12px; margin-right:6px; font-size:0.9em;">{{ tool }}</span>
-                        {% endfor %}
-                    </div>
+                            {% endfor %}
+                        </div>
                     {% endif %}
                 </div>
             {% endfor %}

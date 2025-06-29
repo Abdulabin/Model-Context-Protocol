@@ -74,7 +74,8 @@ def get_servers_info():
     return {
         name: {
             "active": data.get("active"),
-            "tools": [tool.get("name") for tool in data.get("tools", [])]
+            "tools": [tool.get("name") for tool in data.get("tools", [])],
+            "msg": data.get("msg", None)
         }
         for name, data in mcp_client.servers.items()
     }
@@ -89,6 +90,90 @@ def render_server_config_template(request: Request, config_text: str, llm_config
         "flash_type": flash_type,
 
     })
+
+
+import json
+from google.genai import types
+from google.genai.types import Part
+
+def build_reformulation_prompt(chats, new_query, n=5):
+    system_text = (
+        "You are a query reformulator, specializing in context-aware rewriting. Your job is *only* to rewrite user queries.\n"
+        "Given a new user query and recent conversation history, your goal is to produce a clear, concise, self-contained, grammatically correct, and correctly spelled query, while trying to understand the user's intent.\n"
+        "If the query is contextually relevant to the conversation, reformulate it accordingly.\n"
+        "If the query is unrelated, ambiguous, or unclear, return the original query, corrected for grammar and spelling where possible.\n"
+        "Do not provide explanations or answer the query; only output the final, reformulated query.\n"
+        "\n"
+        "**Instructions:**\n"
+        "1.  Carefully analyze the user's new query and the preceding conversation to understand the user's intent.\n"
+        "2.  Check for grammar and spelling errors in the user's query and correct them.\n"
+        "3.  Determine if the new query refers to information discussed earlier in the conversation.\n"
+        "4.  If contextually relevant, rewrite the query, incorporating relevant details from the conversation to make it self-contained, grammatically correct, and correctly spelled.\n"
+        "5.  If not contextually relevant or unclear, return the original query, after correcting grammar and spelling.\n"
+        "\n"
+        "### Few-shot Examples:\n"
+        "Conversation:\n"
+        "User: What’s the latest iPhone model?\n"
+        "Assistant: The latest iPhone model is the iPhone 15 Pro Max.\n"
+        "User: How much dose it cost?\n"
+        "→ Reformulated: How much does the iPhone 15 Pro Max cost?\n"
+        "\n"
+        "Conversation:\n"
+        "User: Who founded Tesla?\n"
+        "Assistant: Tesla was founded by Martin Eberhard and Marc Tarpenning, but Elon Musk later became a key figure.\n"
+        "User: Were is he now?\n"
+        "→ Reformulated: Where is Elon Musk now?\n"
+        "\n"
+        "Conversation:\n"
+        "User: Hi\n"
+        "→ Reformulated: Hi\n"
+        "\n"
+        "Conversation:\n"
+        "User: Tell me a story.\n"
+        "Assistant: Sure! What kind of story would you like?\n"
+        "User: about a cat\n"
+        "→ Reformulated: Tell me a story about a cat.\n"
+        "\n"
+        "Conversation:\n"
+        "User:  what is the wether today?\n"
+        "→ Reformulated: What is the weather today?\n"
+    )
+
+    system_part = types.Content(role="model", parts=[Part.from_text(text=system_text)])
+    past_conv = [system_part]
+
+    for msg in chats[-n:]:
+        past_conv.append(types.Content(role="user", parts=[Part.from_text(text=msg["User"])]))
+        past_conv.append(types.Content(role="assistant", parts=[Part.from_text(text=msg["Assistant"])]))
+
+    past_conv.append(types.Content(role="user", parts=[Part.from_text(text=new_query)]))
+    return past_conv
+
+def get_recent_chats(n=5,):
+    try:
+        with open(CHAT_HISTORY_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+async def reformulate_query(new_query, n=5):
+    mcp_client.logger.info(f"-------- Reformulating New User Query  --------")
+
+    mcp_client.logger.info(f"Starting query reformulation for: '{new_query}'")
+    
+    chats = get_recent_chats(n)
+    mcp_client.logger.debug(f"Loaded last {n} chat(s) for context: {len(chats)} message pairs")
+
+    payload = build_reformulation_prompt(chats, new_query, n)
+    mcp_client.logger.debug(f"Sending reformulation prompt to LLM with total parts: {len(payload)}")
+
+    try:
+        resp = await mcp_client.generate_content(payload, without_tools=True)
+        mcp_client.logger.debug(f"Reformulated query: '{resp.text.strip()}'")
+        return resp.text
+    except Exception as e:
+        mcp_client.logger.error(f"Failed to reformulate query: {e}", exc_info=True)
+        return new_query 
 
 @app.post("/initialize")
 async def initialize_server():
@@ -134,13 +219,7 @@ async def get_response(user_query: str):
 @app.get("/servers")
 async def get_servers():
     try:
-        servers_info = {
-            name: {
-                "active": data.get("active"),
-                "tools": [tool.get("name") for tool in data.get("tools", [])]
-            }
-            for name, data in mcp_client.servers.items()
-        }
+        servers_info = get_servers_info()
         return {"servers": servers_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching servers: {e}")
@@ -170,8 +249,8 @@ async def health_check():
 #########################   FRONTEND 
 
 @app.get("/")
-async def home():
-    return RedirectResponse(url="/chat", status_code=status.HTTP_303_SEE_OTHER)
+async def home(request:Request):
+    return templates.TemplateResponse("home.html", {"request": request, "flash_message": None,"flash_type": None,})
 
 @app.get("/settings", name="settings")
 async def render_server_configs(request: Request):
@@ -347,7 +426,8 @@ async def chat_page(request: Request):
         if mcp_client.llm_client is None:
             return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
         try:
-            res = await mcp_client.process_user_query(user_query)
+            reform_query = await reformulate_query(user_query,n=5)
+            res = await mcp_client.process_user_query(reform_query)
             response = {"User": user_query, "Assistant": res}
             save_chat(response)
             return RedirectResponse(url="/chat", status_code=status.HTTP_303_SEE_OTHER)
